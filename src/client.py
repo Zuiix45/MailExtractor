@@ -6,7 +6,6 @@ import json
 import csv
 import google.generativeai as genai
 
-from datetime import datetime
 from email.header import decode_header
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -21,17 +20,17 @@ class EmailClient:
         print("Logging in to email server...")
     
         self.__imap.login(username, password)
-        self.__imap.select("INBOX")
+        self.__imap.select("rotabull")
         
     def __decodeH(self, header):
         header_part, encoding = decode_header(header)[0]
         if isinstance(header_part, bytes):
-            header_part = header_part.decode(encoding) # if it's a bytes, decode to str
+            header_part = header_part.decode(encoding, errors='replace') # if it's a bytes, decode to str
         return header_part
 
     def __fetch_email(self, index: int, message_parts: str = "(RFC822)"):
         res, msg = self.__imap.fetch(str(index), message_parts)
-        
+                
         for response in msg:
             if isinstance(response, tuple):
                 # parse a bytes email into a message object
@@ -67,22 +66,14 @@ class EmailClient:
                                     open(filepath, "wb").write(data)
                         
                         elif content_type == "text/plain":
-                            body = part.get_payload(decode=True).decode()
+                            body = part.get_payload(decode=True).decode('utf-8', errors='replace')
                 else:
                     # extract content type of email
                     content_type = msg.get_content_type()
                     
                     # get the email body
                     if content_type == "text/plain":
-                        body = msg.get_payload(decode=True).decode()
-                        
-                if content_type == "text/html":
-                    if not os.path.isdir("attachments"):
-                        # make a folder for this email (named after the subject)
-                        os.mkdir("attachments")
-                    filepath = os.path.join("attachments", "index.html")
-                    # download attachment and save it
-                    open(filepath, "w").write(body)
+                        body = msg.get_payload(decode=True).decode('utf-8', errors='replace')
                     
                 self.email_history.append({
                     "subject": subject,
@@ -151,19 +142,20 @@ class GenAIClient:
         self.chat = self.model.start_chat(history=[])
         
     async def parseNewMails(self, email_client: EmailClient, delay: int = 5):
-        for i in range(email_client.new_email_count):
-            email = email_client.new_emails[i]
-        
-            # send the email body to the AI model and save the response to a CSV file
-            if email["body"] != "":
-                print("Sending email " + str(i) + " to AI model...")
-                response = self.chat.send_message(email["body"])
-                data = json.loads(response.text)
-                self.save_to_csv("email_" + str(i) + ".csv", data)
-        
-        email_client.resetNewEmails()
-        
-        await asyncio.sleep(delay) # wait for the next loop
+        if len(email_client.new_emails) > 0:
+            for i in range(email_client.new_email_count):
+                email = email_client.new_emails[i]
+            
+                # send the email body to the AI model and save the response to a CSV file
+                if email["body"] != "":
+                    print("Sending email " + str(i) + " to AI model...")
+                    response = self.chat.send_message(email["body"])
+                    data = json.loads(response.text)
+                    self.save_to_csv("email_" + str(i) + ".csv", data)
+            
+            email_client.resetNewEmails()
+            
+            await asyncio.sleep(delay) # wait for the next loop
         
     def save_to_csv(self, filename, data):
         path_name = "output"
@@ -172,6 +164,9 @@ class GenAIClient:
             os.mkdir(path_name)
         
         print("Saving AI response to " + filename + "...")
+        
+        if not 'Description' in data or not 'description' in data:
+            data['Description'] = '-'
         
         with open(os.path.join(path_name, filename), 'w', newline='') as file:
             writer = csv.writer(file)

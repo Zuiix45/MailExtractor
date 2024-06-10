@@ -9,7 +9,7 @@ SYSTEM_INSTRUCTIONS = os.getenv("SYSTEM_INSTRUCTIONS")
 OUTLOOK_IMAP = "outlook.office365.com"
         
 if __name__ == "__main__":
-    email_client = client.EmailClient(USERNAME, PASSWORD, OUTLOOK_IMAP)
+    email_client = client.EmailClient(USERNAME, PASSWORD, OUTLOOK_IMAP, starting_email_index=0)
     genai_client = client.GenAIClient(GOOGLE_API_KEY, system_instructions=SYSTEM_INSTRUCTIONS)
     
     loop = asyncio.new_event_loop()
