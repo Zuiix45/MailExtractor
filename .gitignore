@@ -2,5 +2,4 @@
 .vscode
 src/__pycache__
 venv
-attachments
-output
+outputs

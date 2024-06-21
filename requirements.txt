@@ -1,2 +1,6 @@
 python-dotenv
 google-generativeai
+pdf2image
+six
+pillow
+pytesseract
