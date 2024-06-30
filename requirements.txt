@@ -4,3 +4,5 @@ pdf2image
 six
 pillow
 pytesseract
+gradio
+requests
